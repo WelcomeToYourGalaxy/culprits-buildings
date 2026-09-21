@@ -1,0 +1,39 @@
+# Rebuilds the building archives this repo serves, every Monday.
+#
+# One job: scripts/building_types.py builds tiles/buildings/<kind>.pmtiles and
+# tiles/building_types.json from the accountability maps' building files, and
+# .github/save.sh publishes them. To run it by hand: Actions > refresh > Run
+# workflow.
+name: refresh
+on:
+  schedule:
+    - cron: "43 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+
+concurrency:
+  group: refresh
+  cancel-in-progress: false
+
+jobs:
+  buildings:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build the buildings
+        env:
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+        run: timeout 320m python3 scripts/building_types.py
+      - name: Save what it made
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: bash .github/save.sh "Buildings rebuilt"
